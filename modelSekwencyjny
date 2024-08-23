@@ -1,0 +1,311 @@
+# -------------------------------------------------------------------------
+# We import torch & TF so as to use torch Dataloaders & tf.data.Datasets.
+# This is a pattern from site:
+# https://keras.io/guides/training_with_built_in_methods/
+# This use tensorFlow.data.dataset's as a data input structure.
+
+import os
+
+# Set the environment variable
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
+
+
+
+import tensorflow as tf
+import os
+import numpy as np
+import keras
+from tensorflow.keras import layers
+from keras import ops
+
+
+import tensorflow as tf
+from tensorflow.python.keras.models import Sequential
+from tensorflow.python.keras.layers import Conv2D, Activation, MaxPooling2D, Flatten, Dense
+from tensorflow.python.keras.engine import data_adapter
+
+# --------------    Wątek Był błąd nie wiem czemu ale teraz z tym kodem działa.
+# https://stackoverflow.com/questions/77125999/google-colab-tensorflow-distributeddatasetinterface-error
+def _is_distributed_dataset(ds):
+    return isinstance(ds, data_adapter.input_lib.DistributedDatasetSpec)
+
+data_adapter._is_distributed_dataset = _is_distributed_dataset
+
+
+
+# Load CSV file into a NumPy array
+labels = np.loadtxt('probes/spiralCenter.csv', delimiter=',')
+
+# Załadowanie danych 100 spiral
+trainData = np.loadtxt('probes/spiralTest.csv', delimiter=',')
+
+# Images: shape (num_samples, 100, 100, 1)
+trainData = trainData.reshape(100, 100, 100, 1) / 255
+
+train_images = trainData
+# Co 5-ty do zbioru testowego
+eval_images = trainData[0:100:5, :, :, :]
+
+
+train_labels = labels.reshape(100, 2)
+eval_labels = labels[0:100:5, :]
+
+
+
+
+# Convert to tf.data.Dataset
+train_dataset = tf.data.Dataset.from_tensor_slices((train_images, train_labels))
+eval_dataset = tf.data.Dataset.from_tensor_slices((eval_images, eval_labels))
+
+# Batch and shuffle the datasets
+train_dataset = train_dataset.shuffle(buffer_size=100).batch(60)
+eval_dataset = eval_dataset.batch(10)
+
+
+
+
+# Step 2: Define the Model
+model = Sequential([
+    Conv2D(32, (3, 3), padding='same', input_shape=(100, 100, 1)),
+    Activation('relu'),
+    MaxPooling2D(pool_size=(2, 2)),
+    Flatten(),
+    Dense(64),
+    Activation('relu'),
+    Dense(2)
+])
+
+# Compile the model
+model.compile(optimizer='adam', loss='mean_squared_error')
+
+# Print the model summary
+model.summary()
+
+# Step 3: Train the Model
+history = model.fit(train_dataset, epochs=1)
+
+# Step 4: Evaluate the Model
+eval_loss = model.evaluate(eval_dataset)
+print(f"Evaluation Loss: {eval_loss}")
+
+
+'''
+from tensorflow.python.keras.models import Sequential
+from tensorflow.python.keras.layers import Conv2D, Activation, MaxPooling2D, Flatten, Dense
+
+# Define the model
+model = Sequential()
+
+# Add a Conv2D layer with 32 filters, a kernel size of 3x3, and 'same' padding
+# Input shape is (100, 100, 1) for grayscale images, or (100, 100, 3) for RGB images
+# Here, we assume grayscale images, so we use (100, 100, 1)
+model.add(Conv2D(32, (3, 3), padding='same', input_shape=(100, 100, 1)))
+model.add(Activation('relu'))  # Add ReLU activation
+
+# Add a MaxPooling2D layer to downsample the feature maps
+model.add(MaxPooling2D(pool_size=(2, 2)))
+
+# Flatten the output from the previous layer to feed into fully connected layers
+model.add(Flatten())
+
+# Add a Dense layer with 64 units
+model.add(Dense(64))
+model.add(Activation('relu'))  # ReLU activation for the dense layer
+
+# Output layer with 2 units (for 2 output numbers)
+model.add(Dense(2))
+
+# Compile the model
+model.compile(optimizer='adam', loss='mean_squared_error')
+
+# Print the model summary to see the architecture
+model.summary()
+
+'''
+exit(0)
+
+# Function to expand the dimensions of each image
+def add_channel_dimension(image, _):
+    return (tf.expand_dims(image, axis=0), _)  # Add channel dimension at the end
+
+
+# In BuildInMethods there is used tensorflow.keras module for:
+# 1. Create a model, train
+# 2. Train it
+# 3. Evaluate
+# 4. Use it
+
+
+
+# ------- 1. Creating model
+inputs = layers.Input(shape=(100, 100), name="digits")
+x = layers.Dense(64, activation="relu", name="dense_1")(inputs)
+x = layers.Dense(64, activation="relu", name="dense_2")(x)
+
+x = layers.Reshape((2,))(x)
+
+# -------------- Tutaj zapisuje to co wychodzi z modelu
+outputs = layers.Dense(2, activation="softmax", name="predictions")(x)
+
+
+model = keras.Model(inputs=inputs, outputs=outputs)
+
+
+
+# ------- 2. Train
+
+# Tu chcę wczytać kolejne obrazy o wymiarach 1984 x 1488
+# Teraz przygotuje obrazy i wartości wynikowe i testowe
+
+
+
+# Load CSV file into a NumPy array
+labels = np.loadtxt('probes/spiralCenter.csv', delimiter=',')
+
+# Załadowanie danych 100 spiral
+trainData = np.loadtxt('probes/spiralTest.csv', delimiter=',')
+
+trainData = trainData.reshape(100,100,100)
+
+
+x_train = trainData
+# Co 5-ty do zbioru testowego
+x_test = trainData[0:100:5, :, :]
+
+
+y_train = labels
+y_test = labels[0:100:5]
+
+x_val = trainData[0:100:10, :, :]
+y_val = labels[0:100:10]
+
+# Sprawdzę y_test i y_val
+
+print( y_test )
+
+print( "Validation ---- ")
+
+print( y_val )
+
+
+'''
+(x_train, y_train), (x_test, y_test) = keras.datasets.mnist.load_data()
+
+# Preprocess the data (these are NumPy arrays)
+# 60000 - liczba obrazków
+#   784 - liczba danych liczona jako iloczyn rozmiaru 28*28 = 784
+x_train = x_train.reshape(60000, 784).astype("float32") / 255
+x_test = x_test.reshape(10000, 784).astype("float32") / 255
+
+print( type(x_train) )
+print(" ---- dane treningowe: ")
+print("Wejście : ")
+print( x_train[0, 0]  )
+
+y_train = y_train.astype("float32")
+y_test = y_test.astype("float32")
+
+print(" --- ")
+print(" Wyjście: ")
+
+
+
+print("Test: ")
+print(y_test)
+
+# Reserve 10,000 samples for validation
+x_val = x_train[-10000:]
+y_val = y_train[-10000:]
+x_train = x_train[:-10000]
+y_train = y_train[:-10000]
+'''
+
+
+# First, let's create a training Dataset instance.
+# For the sake of our example, we'll use the same MNIST data as before.
+train_dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train))
+
+train_dataset.batch(10)
+train_dataset = train_dataset.map(add_channel_dimension)
+
+print( train_dataset.element_spec )
+
+# ------------------- Jak to zrobić żeby wyjście było wektorem dwu-elementowym
+
+
+# Shuffle and slice the dataset.
+# train_dataset = train_dataset.shuffle(buffer_size=1024).batch(64)
+
+# Now we get a test dataset.
+test_dataset = tf.data.Dataset.from_tensor_slices((x_test, y_test))
+test_dataset = test_dataset.batch(5)
+
+
+
+
+''' 
+For optimization, losses, metrics I can have many options
+
+    Optimizers: SGD(), Adam() etc... 
+    All spectrum avilable in: https://www.tensorflow.org/api_docs/python/tf/keras/optimizers
+
+    Loss function: MeanSquaredError(), KLDinvergence() etc...
+    All spectrum avilable in: https://www.tensorflow.org/api_docs/python/tf/keras/losses
+
+    Metrics function: AUC(), Precission(), Recall() etc...
+    All spectrum avilable in: https://www.tensorflow.org/api_docs/python/tf/keras/metrics
+'''
+
+model.compile(
+    optimizer=keras.optimizers.RMSprop(),  # Optimizer
+    # Loss function to minimize
+    loss=keras.losses.SparseCategoricalCrossentropy(),
+    # List of metrics to monitor
+    metrics=[keras.metrics.SparseCategoricalAccuracy()],
+)
+
+# Since the dataset already takes care of batching,
+# we don't pass a `batch_size` argument.
+history = model.fit(train_dataset, epochs=3)
+
+
+# You can also evaluate or predict on a dataset.
+print("Evaluate")
+result = model.evaluate(test_dataset)
+dict(zip(model.metrics_names, result))
+
+
+
+
+print("Fit model on training data")
+history = model.fit(
+    x_train,
+    y_train,
+    batch_size=64,
+    epochs=2,
+    # We pass some validation for
+    # monitoring validation loss and metrics
+    # at the end of each epoch
+    validation_data=(x_val, y_val),
+)
+
+
+print(history.history)
+
+# ------- 3. Evaluate
+
+# Evaluate the model on the test data using `evaluate`
+print("Evaluate on test data")
+results = model.evaluate(x_test, y_test, batch_size=128)
+print("test loss, test acc:", results)
+
+# Generate predictions (probabilities -- the output of the last layer)
+# on new data using `predict`
+print("Generate predictions for 3 samples")
+predictions = model.predict(x_test[:3])
+print("predictions shape:", predictions.shape)
+
+
+# ------- 4. Use it
+
+
